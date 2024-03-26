@@ -6,7 +6,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_headless_detection() {
-        let driver = chrome().await.unwrap();
+        let driver = chrome(None).await.unwrap();
         driver
             .goto("https://arh.antoinevastel.com/bots/areyouheadless")
             .await

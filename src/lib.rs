@@ -9,7 +9,7 @@ use thirtyfour::{prelude::ElementWaitable, By};
 
 /// Fetches a new ChromeDriver executable and patches it to prevent detection.
 /// Returns a WebDriver instance.
-pub async fn chrome() -> Result<WebDriver, Box<dyn std::error::Error>> {
+pub async fn chrome(debug_address: Option<&str>) -> Result<WebDriver, Box<dyn std::error::Error>> {
     let os = std::env::consts::OS;
     if std::path::Path::new("chromedriver").exists()
         || std::path::Path::new("chromedriver.exe").exists()
@@ -112,8 +112,12 @@ pub async fn chrome() -> Result<WebDriver, Box<dyn std::error::Error>> {
     caps.add_chrome_arg("window-size=1920,1080").unwrap();
     caps.add_chrome_arg("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.0.0 Safari/537.36").unwrap();
     caps.add_chrome_arg("disable-infobars").unwrap();
-    caps.add_chrome_option("excludeSwitches", ["enable-automation"])
-        .unwrap();
+    match debug_address {
+        Some(addr) => caps.set_debugger_address(addr).unwrap(),
+        None => caps
+            .add_chrome_option("excludeSwitches", ["enable-automation"])
+            .unwrap(),
+    }
     let mut driver = None;
     let mut attempt = 0;
     while driver.is_none() && attempt < 20 {
@@ -232,6 +236,7 @@ async fn get_chrome_version(os: &str) -> Result<String, Box<dyn std::error::Erro
 #[async_trait::async_trait]
 pub trait Chrome {
     async fn new() -> Self;
+    async fn new_debug(address: &str) -> Self;
     async fn bypass_cloudflare(
         &self,
         url: &str,
@@ -243,7 +248,11 @@ pub trait Chrome {
 #[async_trait::async_trait]
 impl Chrome for WebDriver {
     async fn new() -> WebDriver {
-        chrome().await.unwrap()
+        chrome(None).await.unwrap()
+    }
+
+    async fn new_debug(address: &str) -> WebDriver {
+        chrome(Some(address)).await.unwrap()
     }
 
     async fn goto(&self, url: &str) -> Result<(), Box<dyn Error>> {
